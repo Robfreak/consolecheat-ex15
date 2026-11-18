@@ -34,7 +34,7 @@ Inoffiziell. Nicht von Sony.
 | Gamepad Options (button 9) | play / stop |
 | Gamepad L1 / R1 (buttons 4/5) | previous / next track |
 
-Shortcuts are ignored while a text field, select, or slider has focus. The Gamepad API is polled on `requestAnimationFrame` with edge detection, so holding a button fires once.
+Shortcuts are ignored while a text field, select, or slider has focus. The Gamepad API is polled on `requestAnimationFrame` with edge detection, so holding a button fires once. The first poll of a pad (also after a reconnect) only records which buttons are down, so a button already held when the pad connects or the page loads does nothing.
 
 Accessibility: every step is a button with an accessible name (track, step, on/off, note) and `aria-pressed`; play state is announced through an `aria-live` region; focus rings stay visible; `prefers-reduced-motion` turns off the playhead motion.
 

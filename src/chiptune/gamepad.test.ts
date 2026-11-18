@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { edgeActions, firstPad, readButtons, risingEdges, type PadLike } from "./gamepad.ts";
+import { edgeActions, firstPad, pollPad, readButtons, risingEdges, type PadLike, type PadMemory } from "./gamepad.ts";
 
 function pad(pressed: number[], axes: number[] = [0, 0]): PadLike {
   return {
@@ -50,4 +50,30 @@ test("the first connected pad is used", () => {
   const a = { ...pad([]), connected: false };
   const b = pad([0]);
   assert.equal(firstPad([null, a, b]), b);
+});
+
+test("holding × on the first poll does nothing; release then press fires once", () => {
+  let memory: PadMemory | null = null;
+  const fired: string[] = [];
+  for (const frame of [pad([0]), pad([0]), pad([0]), pad([]), pad([0]), pad([0])]) {
+    const result = pollPad(frame, memory);
+    memory = result.memory;
+    fired.push(...result.actions);
+  }
+  assert.deepEqual(fired, ["toggle"]);
+});
+
+test("after a disconnect and reconnect the first poll only initializes again", () => {
+  let memory = pollPad(pad([]), null).memory;
+  assert.deepEqual(pollPad(pad([9]), memory).actions, ["play"], "a normal press still fires");
+  memory = pollPad(null, memory).memory;
+  assert.equal(memory, null, "no pad clears the memory");
+  const first = pollPad(pad([0, 9]), memory);
+  assert.deepEqual(first.actions, [], "held buttons at reconnect do nothing");
+  assert.deepEqual(pollPad(pad([0, 9]), first.memory).actions, []);
+  const released = pollPad(pad([]), first.memory);
+  assert.deepEqual(pollPad(pad([0]), released.memory).actions, ["toggle"]);
+  // A different pad counts as a new connection too.
+  const other = { ...pad([0]), id: "Other Pad", index: 1 } as PadLike;
+  assert.deepEqual(pollPad(other, released.memory).actions, []);
 });

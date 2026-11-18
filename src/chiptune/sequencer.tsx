@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { clampLoops, LOOPS_MAX, LOOPS_MIN, noteName, songSeconds } from "./audio-math.ts";
 import { Engine } from "./engine.ts";
-import { edgeActions, firstPad, readButtons, type PadAction, type PadLike } from "./gamepad.ts";
+import { firstPad, pollPad, type PadAction, type PadLike, type PadMemory } from "./gamepad.ts";
 import { LoopIcon, PlayIcon, StopIcon } from "./icons.tsx";
 import { globalAction, gridAction } from "./keys.ts";
 import { fill, type Copy } from "./messages.ts";
@@ -250,7 +250,7 @@ export function Sequencer({ text }: { text: Copy }) {
 
   useEffect(() => {
     let frame = 0;
-    let prev: boolean[] = [];
+    let memory: PadMemory | null = null;
     let lastName: string | null = null;
     let lastStep: number | null = null;
     const loop = () => {
@@ -261,9 +261,10 @@ export function Sequencer({ text }: { text: Copy }) {
         lastName = name;
         setPadName(name);
       }
-      const next = pad ? readButtons(pad) : [];
-      for (const action of edgeActions(prev, next)) padActions.current(action);
-      prev = next;
+      // The first poll of a pad only seeds the memory, so a button held at connect does nothing.
+      const polled = pollPad(pad, memory);
+      memory = polled.memory;
+      for (const action of polled.actions) padActions.current(action);
       const step = engine.step();
       if (step !== lastStep) {
         lastStep = step;

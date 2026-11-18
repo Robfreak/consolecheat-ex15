@@ -56,3 +56,23 @@ export function firstPad(pads: readonly (PadLike | null)[] | null | undefined): 
   for (const pad of pads) if (pad && pad.connected !== false) return pad;
   return null;
 }
+
+/** What the previous poll saw: which pad, and which buttons were down. */
+export type PadMemory = { key: string; buttons: boolean[] };
+
+function padKey(pad: PadLike): string {
+  const meta = pad as PadLike & { id?: string; index?: number };
+  return `${meta.index ?? 0}:${meta.id ?? ""}`;
+}
+
+/**
+ * One poll. The first poll of a pad (no memory, after a disconnect, or a different pad)
+ * only records the button state and emits nothing, so a button that is already held
+ * when the pad connects or the page loads does not fire. No pad clears the memory.
+ */
+export function pollPad(pad: PadLike | null, memory: PadMemory | null): { actions: PadAction[]; memory: PadMemory | null } {
+  if (!pad) return { actions: [], memory: null };
+  const next: PadMemory = { key: padKey(pad), buttons: readButtons(pad) };
+  if (!memory || memory.key !== next.key) return { actions: [], memory: next };
+  return { actions: edgeActions(memory.buttons, next.buttons), memory: next };
+}
